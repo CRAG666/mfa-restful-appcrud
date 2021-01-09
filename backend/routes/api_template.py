@@ -10,28 +10,27 @@ from models.Login import LoginSchema
 
 class MethodsApi(MethodView):
     """ Class for control to endpoints """
-    def __init__(self, table: db.Model, table_schema: ma.Schema, customize_login: dict = None):
+    def __init__(self, table: db.Model, table_schema: ma.Schema, **kwargs):
         """Contructor
 
         Args:
             table (db.Model): sqlalchemy model
             table_schema (ma.Schema): marshmallow schema
-            customize_login (dict, optional):
-                {
-                    schema (ma.Schema): marshmallow scheme to validate the login. Defaults to LoginSchema
-                    field_search (str): field name to search in db
-                    password_field_name (str): field name for password
-                    key_encrypt (str): key to create jwt token. Default to app.config['SECRET_KEY']
-                    post_action (tuple): Receive a tuple with two elements. The first is the function to be executed after the creation of the token, the second corresponds to the parameters received by the function in str. Default to False
-                }
+        Keyword Args:
+            schema (ma.Schema): marshmallow scheme to validate the login. Defaults to LoginSchema
+            field_search (str): field name to search in db
+            password_field_name (str): field name for password
+            key_encrypt (str): key to create jwt token. Default to app.config['SECRET_KEY']
+            post_action (tuple): Receive a tuple with two elements. The first is the function to be executed after the creation of the token, the second corresponds to the parameters received by the function in str. Default to False
         """
-        if customize_login is None:
-            customize_login = {}
-        self.customize_login = customize_login
+        self.customize_login = kwargs
         self.Table = table
         self.Result = table_schema()
         self.Results = table_schema(many=True)
-        self.login = validate_json(customize_login.get("schema", LoginSchema)())(self.login)
+        self.login = validate_json(
+            kwargs.get(
+                "schema",
+                LoginSchema)())(self.login)
         self.put = validate_json(self.Result)(self.put)
         self.add = validate_json(self.Result)(self.add)
 
@@ -48,23 +47,36 @@ class MethodsApi(MethodView):
             http error: corresponding code http error
         """
         if id:
-            one_registry = self.Table.get_by_id(self.Table, id, current_user)
-            return self.Result.jsonify(one_registry)
+            return self.get_by_id(current_user, id)
 
-        if 'page' in request.args.keys():
-            page = int(request.args.get('page'))
-            per_page = int(request.args.get('size', 10))
-            paginar = self.Table.query.paginate(page, per_page, False)
-            if not paginar.items:
-                abort(404)
-            return jsonify(
-                {"results": self.Results.dump(paginar.items),
-                 "total-pages": paginar.pages})
+        elif 'page' in request.args.keys():
+            page = int(request.args.get(
+                'page',
+                type=int,
+                default=1))
+            per_page = int(request.args.get(
+                'size',
+                type=int,
+                default=10))
+            return self.get_pagination(page, per_page, current_user)
 
-        registrys_list = self.Table.all(self.Table, current_user)
-        if not registrys_list:
-            abort(404)
+        return self.get_all(current_user)
+
+    def get_all(self, current_user: object):
+        registrys_list = self.Table.all(
+            self.Table,
+            current_user)
         return jsonify({"results": self.Results.dump(registrys_list)})
+
+    def get_by_id(self, current_user: object, id: int):
+        one_registry = self.Table.get_by_id(self.Table, id, current_user)
+        return self.Result.jsonify(one_registry)
+
+    def get_pagination(self, page: int, per_page: int, current_user: object):
+        paginar = self.Table.paginate(self.Table, page, per_page, current_user)
+        return jsonify(
+            {"results": self.Results.dump(paginar.items),
+                "total-pages": paginar.pages})
 
     def post(self):
         """ Method http GET """
@@ -80,17 +92,24 @@ class MethodsApi(MethodView):
             token (json): jwt
         """
         auth = request.json
-        search = {
-            self.customize_login.get('field_search', "email"): auth[
-                self.customize_login.get('field_search', "email")
-            ]}
+        search_field_name = self.customize_login.get(
+            'field_search',
+            "email")
+        search_field_value = auth[search_field_name]
+        search_dict = {search_field_name: search_field_value}
 
-        user = self.Table.query.filter_by(**search).first()
+        user = self.Table.query.filter_by(**search_dict).first()
 
         if not user:
             abort(401)
 
-        if user.compare_passwords(auth[self.customize_login.get('password_field_name', "password")]):
+        password_field_name = self.customize_login.get(
+            'password_field_name',
+            "password")
+
+        password = auth[password_field_name]
+
+        if user.compare_passwords(password):
             token = jwt.encode({
                 'id': user.id,
                 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=30),

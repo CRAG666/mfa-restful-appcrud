@@ -14,3 +14,14 @@ class DevelopmentConfig(Config):
     SQLALCHEMY_DATABASE_URI = f'{EGINE_URI}/{DB_NAME}'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     TABLE_VALIDATE_TOKEN = UsersModel
+
+
+class ProductionConfig(Config):
+    DEBUG = False
+    EGINE_URI = 'mysql+mysqlconnector://root:' + environ['passmaria'] + '@db'
+    # * EGINE_URI = 'mysql://root:@localhost'
+    DB_NAME = 'cruddb'
+    SQLALCHEMY_DATABASE_URI = f'{EGINE_URI}/{DB_NAME}'
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    TABLE_VALIDATE_TOKEN = UsersModel
+

@@ -5,7 +5,7 @@ from flask import abort
 
 
 class UsersModel(db.Model, Standard):
-    __tablename__ = 'Users'
+    __tablename__ = "Users"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
@@ -16,11 +16,10 @@ class UsersModel(db.Model, Standard):
         self.changes(fields, curren_user)
 
     def changes(self, fields: dict, curren_user: object):
-        self.name = fields.get('name')
-        self.password = self.__generate_password(fields.get('password'))
-        self.email = fields.get('email')
-        self.all_perm = fields.get('all_perm', False)
-        print(curren_user.name)
+        self.name = fields.get("name")
+        self.password = self.__generate_password(fields.get("password"))
+        self.email = fields.get("email")
+        self.all_perm = fields.get("all_perm", False)
 
     @staticmethod
     def get_by_id(table, id, current_user):
@@ -47,4 +46,4 @@ class UsersSchema(ma.Schema):
     password = ma.Str(validate=validate.Length(min=4), load_only=True, required=True)
 
     class Meta:
-        fields = ('id', 'name', 'email', 'password')
+        fields = ("id", "name", "email", "password")

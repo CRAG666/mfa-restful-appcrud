@@ -31,11 +31,12 @@ def create_routes(**kwargs):
                 noun="v1/somenoun",
                 endpoints=[['/api/v1/somenoun', ['GET','POST'])
     """
+    customize_login = kwargs.get('customize_login', {})
     view_func = MethodsApi.as_view(
         f"{kwargs.get('noun')}_api",
         kwargs.get('table'),
         kwargs.get('table_schema'),
-        kwargs.get('customize_login')
+        **customize_login
     )
 
     endpoints = kwargs.get(
